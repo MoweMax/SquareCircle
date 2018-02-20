@@ -12,7 +12,7 @@
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="580.0" prefWidth="1024.0" xmlns="http://javafx.com/javafx/8.0.141" xmlns:fx="http://javafx.com/fxml/1" fx:controller="app.MyController">
    <children>
-      <Button fx:id="btn_shot" layoutX="745.0" layoutY="43.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="90.0" text="Take a shot" AnchorPane.rightAnchor="85.0" AnchorPane.topAnchor="50.0">
+      <Button fx:id="btn_shot" layoutX="745.0" layoutY="43.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="90.0" text="Run camera" onAction="#takeShot">
          <font>
             <Font name="Segoe UI" size="12.0" />
          </font>
