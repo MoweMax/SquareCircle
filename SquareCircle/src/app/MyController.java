@@ -4,10 +4,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.opencv.imgproc.Imgproc;
 import org.opencv.core.Mat;
 import org.opencv.videoio.VideoCapture;
 
 import java.awt.image.DataBufferByte;
+import java.awt.image.Raster;
 
 import javafx.scene.chart.LineChart;
 import javafx.scene.control.Button;
@@ -40,7 +42,9 @@ public class MyController {
 	
 	private VideoCapture capture;
 	private static int cameraId = 0;
+	private int currentThreshold = 160;	//	TODO: automatic calculation
 	private Mat currentFrame;
+	private int[][] currentFrameArray;
 	private boolean isInited = false;
 
 	private ScheduledExecutorService timer;
@@ -71,8 +75,16 @@ public class MyController {
 	protected void takeShot(ActionEvent event){
 		if(!isInited)
 			cameraInit();
-		else
-			updateImageView(iv_frame, matToImage(getFrame(true)));
+		else{
+			getBinaryMatrix(getFrame(true));
+			updateImageView(iv_frame, matToImage(getFrame(false)));
+		}
+	}
+
+	private void getBinaryMatrix(Mat frame) {
+		Imgproc.cvtColor(frame, frame, Imgproc.COLOR_BGR2GRAY);
+		Imgproc.threshold(frame, frame, currentThreshold, 255, Imgproc.THRESH_BINARY);	// creates array w/ 0 or 255 (not 1, due to displaying)
+		getMatrix(frame);
 	}
 
 	private Mat grabFrame(){
@@ -124,4 +136,28 @@ public class MyController {
 			view.imageProperty().set(image);
 		});
 	}
+	
+	void getMatrix(Mat frame) {
+		BufferedImage image = matToBufferedImage(frame);
+		int w = image.getWidth();
+		int h = image.getHeight();
+
+		currentFrameArray = new int[w][h];
+		
+		Raster raster =  image.getData();
+		for (int j = 0; j < w; j++) {
+		    for (int k = 0; k < h; k++) {
+		    	currentFrameArray[j][k] = raster.getSample(j, k, 0);
+		    }
+		}
+		
+		for (int j = 0; j < w; j++) {
+		    for (int k = 0; k < h; k++) {
+		        System.out.print(currentFrameArray[j][k]+" "); 
+		    }
+		    System.out.println("");
+		}
+		
+	}
+	
 }
