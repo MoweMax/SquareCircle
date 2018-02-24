@@ -1,12 +1,21 @@
 package app;
 
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.opencv.imgproc.Imgproc;
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.videoio.VideoCapture;
+
+import com.sun.prism.paint.Color;
 
 import java.awt.image.DataBufferByte;
 import java.awt.image.Raster;
@@ -44,8 +53,10 @@ public class MyController {
 	private static int cameraId = 0;
 	private int currentThreshold = 160;	//	TODO: automatic calculation
 	private Mat currentFrame;
+	private Mat currentFrameCrop;
 	private int[][] currentFrameArray;
 	private boolean isInited = false;
+	private double k = 1.0;
 
 	private ScheduledExecutorService timer;
 
@@ -77,8 +88,62 @@ public class MyController {
 			cameraInit();
 		else{
 			getBinaryMatrix(getFrame(true));
-			updateImageView(iv_frame, matToImage(getFrame(false)));
+			findA4AndCalculateK((byte) 4, getFrame(false));
+			updateImageView(iv_frame, matToImage(currentFrameCrop));
+			System.gc();
 		}
+	}
+
+	ArrayList<Point> a4Corners = new ArrayList<Point>();
+	private void findA4AndCalculateK(byte corner, Mat frame) {	//corner 0 - center, 1 LT, 2 RT, 3 LL, 4 RL
+		if(frame != null)
+			if(frame.width() > 0 && frame.height() > 0){
+				switch(corner){
+					case 4:{	//	RightLeft
+						Rect roi = new Rect(frame.width()/2, frame.height()/2, frame.width()/2, frame.height()/2);
+						currentFrameCrop = new Mat(frame, roi);
+						
+//						Imgproc.blur( frame, frame, new Size(9.0, 9.0)); //	sometime increases accuracy, but not that stable
+						MatOfPoint dots = new MatOfPoint();
+						Imgproc.goodFeaturesToTrack(currentFrameCrop, dots, 50, 0.2, 200);
+						a4Corners.clear();
+						int xmax = 0;
+						int ymax = 0;
+						int xmin = frame.width();
+						int ymin = frame.height();
+						for(Point dot : dots.toArray()){
+							if(dot.x > xmax){
+								xmax = (int) dot.x;
+							}
+							if(dot.y > ymax){
+								ymax = (int) dot.y;
+							}
+							if(dot.x < xmin){
+								xmin = (int) dot.x;
+							}
+							if(dot.y < ymin){
+								ymin = (int) dot.y;
+							}
+//							Imgproc.circle(currentFrameCrop, dot, 4, new Scalar(128, 128, 128), 3);	//	show all found corners
+						}
+						dots.release();
+
+						a4Corners.add(new Point(xmin,ymin));
+						a4Corners.add(new Point(xmax,ymax));
+
+						Imgproc.circle(currentFrameCrop, a4Corners.get(0), 12, new Scalar(128, 128, 128), 2);
+						Imgproc.circle(currentFrameCrop, a4Corners.get(1), 12, new Scalar(128, 128, 128), 2);
+						
+						double k1 = (a4Corners.get(1).x - a4Corners.get(0).x) / 297 ;
+						double k2 = (a4Corners.get(1).y - a4Corners.get(0).y) / 210 ;
+						k = (k1 + k2) / 2.0;
+						
+						System.out.println("k = " + k);
+						System.out.println((a4Corners.get(1).y - a4Corners.get(0).y) / k);	//	 k test (210 ideal)
+						
+					}
+				}
+			}
 	}
 
 	private void getBinaryMatrix(Mat frame) {
@@ -96,6 +161,7 @@ public class MyController {
 				System.err.println("Exception during the image grabing: " + e);
 			}
 		}
+		Core.flip(frame,frame, 0);	//	use if no physical space to put in RL corner
 		return frame;
 	}
 	
@@ -151,12 +217,12 @@ public class MyController {
 		    }
 		}
 		
-		for (int j = 0; j < w; j++) {
-		    for (int k = 0; k < h; k++) {
-		        System.out.print(currentFrameArray[j][k]+" "); 
-		    }
-		    System.out.println("");
-		}
+//		for (int j = 0; j < w; j++) {
+//		    for (int k = 0; k < h; k++) {
+//		        System.out.print(currentFrameArray[j][k]+" "); 
+//		    }
+//		    System.out.println("");
+//		}
 		
 	}
 	
